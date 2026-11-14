@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR-generator · Samme bord, samme verden</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root { --ink:#151A22; --paper:#F7F5EF; --line:#E2DED4; --grey:#4A5361; --orange:#B9471A; --blue:#2B6CB0; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 32px; margin: 0 0 4px; }
+  .lead { color: var(--grey); margin: 0 0 24px; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; }
+  label { display:block; font-weight:600; font-size:14px; margin: 12px 0 4px; }
+  input, select { width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .hint { font-size: 13px; color: var(--grey); margin-top: 4px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+  .out { word-break: break-all; background: var(--ink); color: #E8ECF2; padding: 10px 12px; border-radius: 8px; }
+  #qr { display:flex; justify-content:center; padding: 16px; background:#fff; }
+  button { font:inherit; font-weight:600; border:0; border-radius:8px; padding:10px 16px; background:var(--orange); color:#fff; cursor:pointer; margin-top:12px; }
+  button.secondary { background: var(--blue); }
+  .ok { color: #2F855A; font-weight:600; } .bad { color: var(--orange); font-weight:600; }
+  /* Udskrift: et A4-ark magen til de printede ark A–F (QR 120 mm, kryds ved ±70 mm / −85 mm) */
+  #sheet { display:none; }
+  @media print {
+    @page { size: A4 portrait; margin: 0; }
+    body { background:#fff; }
+    main { display:none; }
+    #sheet { display:block; position:relative; width:210mm; height:297mm; }
+    #sheet .qr { position:absolute; left:45mm; top:67mm; width:120mm; height:120mm; }
+    #sheet .qr img, #sheet .qr canvas { width:120mm !important; height:120mm !important; image-rendering: pixelated; }
+    #sheet .top { position:absolute; left:0; width:210mm; top:56mm; text-align:center; font: bold 10pt Arial; }
+    #sheet .cross { position:absolute; width:16mm; height:16mm; }
+    #sheet .cross::before, #sheet .cross::after { content:""; position:absolute; background:#000; }
+    #sheet .cross::before { left:7.85mm; top:0; width:0.3mm; height:16mm; }
+    #sheet .cross::after { top:7.85mm; left:0; height:0.3mm; width:16mm; }
+    #sheet .c1 { left:27mm; top:204mm; } #sheet .c2 { left:167mm; top:204mm; }
+    #sheet .meta { position:absolute; left:20mm; right:20mm; top:236mm; font: 9pt Arial; text-align:center; }
+    #sheet .ruler { position:absolute; left:55mm; top:262mm; width:100mm; border-top:0.4mm solid #000; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>QR-generator</h1>
+  <p class="lead">Lav jeres egne QR-koder til øvelsen <b>Samme bord, samme verden</b>. Koden bliver XOR-kodet med holdets nøgle, så <i>kun</i> jeres app reagerer på den. Det er et filter, ikke rigtig kryptering.</p>
+
+  <div class="grid">
+    <div class="card">
+      <label for="key">Holdets nøgle</label>
+      <input id="key" value="VIA-XR" autocomplete="off">
+      <div class="hint">Skal være præcis den samme som <code>teamKey</code> på SharedOrigin i Unity. Standard-arkene bruger <code>VIA-XR</code>.</div>
+
+      <label for="scene">Indhold</label>
+      <select id="scene">
+        <option value="tower">tower – et skævt tårn (seed + højde)</option>
+        <option value="orbit">orbit – planeter styret af uret</option>
+        <option value="blocks">blocks – jeres eget level (udvidelse C)</option>
+        <option value="physics">physics – til fysik-demoen</option>
+        <option value="custom">frit indhold – skriv selv</option>
+      </select>
+
+      <div id="f-seed"><label for="seed">seed</label><input id="seed" type="number" value="42"></div>
+      <div id="f-h"><label for="h">højde (h) – antal klodser</label><input id="h" type="number" value="10" min="1" max="30"></div>
+      <div id="f-b" hidden><label for="b">klodser (b)</label><input id="b" value="0,0,0,r/1,0,0,g/0,1,0,b/2,0,1,y" class="mono">
+        <div class="hint">Hver klods er <code>x,y,z,farve</code> i klods-enheder, adskilt af <code>/</code>. Farver: r g b y v w.</div></div>
+      <div id="f-custom" hidden><label for="custom">indhold</label><input id="custom" value="scene=tower;seed=1;h=8" class="mono"></div>
+    </div>
+
+    <div class="card">
+      <label>Indhold før kodning</label>
+      <div id="plain" class="out mono"></div>
+      <label>Tekst i QR-koden</label>
+      <div id="payload" class="out mono"></div>
+      <div id="qr"></div>
+      <button onclick="window.print()">Print som A4-ark (100 %)</button>
+      <div class="hint">Print i 100 % / »faktisk størrelse«. QR-koden bliver 120 mm, og krydsene står samme sted som på ark A–F.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <b>Test: dekod en kode</b>
+    <label for="test">QR-tekst (fx <code>XRV1:…</code>)</label>
+    <input id="test" class="mono" placeholder="indsæt en kode">
+    <div id="testout" class="hint"></div>
+  </div>
+</main>
+
+<div id="sheet">
+  <div class="top">▲ KODENS TOP</div>
+  <div class="qr" id="printqr"></div>
+  <div class="cross c1"></div><div class="cross c2"></div>
+  <div class="meta" id="printmeta"></div>
+  <div class="ruler"></div>
+</div>
+
+<script>
+  const PREFIX = "XRV1:", MAGIC = "XRV|";
+  const $ = (id) => document.getElementById(id);
+
+  function xor(bytes, key) {
+    const k = new TextEncoder().encode(key);
+    return bytes.map((b, i) => b ^ k[i % k.length]);
+  }
+  function encode(content, key) {
+    const bytes = xor(new TextEncoder().encode(MAGIC + content), key);
+    let s = ""; bytes.forEach((b) => (s += String.fromCharCode(b)));
+    return PREFIX + btoa(s);
+  }
+  function decode(raw, key) {
+    if (!raw.startsWith(PREFIX) || !key) return null;
+    try {
+      const bin = atob(raw.slice(PREFIX.length));
+      const bytes = xor(Uint8Array.from(bin, (c) => c.charCodeAt(0)), key);
+      const plain = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      return plain.startsWith(MAGIC) ? plain.slice(MAGIC.length) : null;
+    } catch { return null; }
+  }
+
+  function content() {
+    const s = $("scene").value;
+    if (s === "custom") return $("custom").value.trim();
+    if (s === "blocks") return `scene=blocks;b=${$("b").value.trim()}`;
+    if (s === "orbit") return `scene=orbit;seed=${$("seed").value}`;
+    return `scene=${s};seed=${$("seed").value};h=${$("h").value}`;
+  }
+
+  function drawQr(el, text, px) {
+    el.innerHTML = "";
+    new QRCode(el, { text, width: px, height: px, correctLevel: QRCode.CorrectLevel.M });
+  }
+
+  function update() {
+    const s = $("scene").value;
+    $("f-seed").hidden = s === "blocks" || s === "custom";
+    $("f-h").hidden = !(s === "tower" || s === "physics");
+    $("f-b").hidden = s !== "blocks";
+    $("f-custom").hidden = s !== "custom";
+
+    const c = content(), key = $("key").value;
+    const p = encode(c, key);
+    $("plain").textContent = c;
+    $("payload").textContent = p;
+    drawQr($("qr"), p, 280);
+    drawQr($("printqr"), p, 1024);
+    $("printmeta").textContent = `nøgle: ${key}   ·   indhold: ${c}   ·   kontrol: stregen nedenfor skal være 100 mm`;
+    testDecode();
+  }
+
+  function testDecode() {
+    const raw = $("test").value.trim();
+    if (!raw) { $("testout").textContent = ""; return; }
+    const d = decode(raw, $("key").value);
+    $("testout").innerHTML = d !== null
+      ? `<span class="ok">Virker med nøglen:</span> <code>${d.replace(/</g, "&lt;")}</code>`
+      : `<span class="bad">Ikke en kode lavet med denne nøgle.</span>`;
+  }
+
+  ["key", "scene", "seed", "h", "b", "custom"].forEach((id) => $(id).addEventListener("input", update));
+  $("test").addEventListener("input", testDecode);
+  update();
+</script>
+</body>
+</html>
