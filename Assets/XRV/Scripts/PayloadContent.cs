@@ -104,11 +104,20 @@ namespace Xrv.Qr
         /// <summary>Et tårn af klodser hvor seed bestemmer forskydning, drejning og farve.</summary>
         void BuildTower(int seed, int height)
         {
-            // TODO OPGAVE 3a – Byg et tårn af "height" klodser ved contentOffset.
-            //   • MakePrimitive(PrimitiveType.Cube, _contentRoot, position, Vector3.one * blockSize, farve)
-            //   • Gør det skævt og farverigt med tilfældige tal – men de SAMME tal på begge headsets:
-            //     new System.Random(seed). Hvorfor ikke UnityEngine.Random?
-            //   • Ingen Rigidbody! (Se fysik-demoen for hvorfor.)
+            // ── Løsning til opgave 3a ──
+            var rng = new System.Random(seed); // IKKE UnityEngine.Random: den deles med alt andet i appen
+            for (int i = 0; i < height; i++)
+            {
+                float dx = (float)(rng.NextDouble() - 0.5) * blockSize * 0.4f;
+                float dz = (float)(rng.NextDouble() - 0.5) * blockSize * 0.4f;
+                float yaw = (float)rng.NextDouble() * 90f;
+                var color = Palette[rng.Next(Palette.Length)];
+
+                var pos = contentOffset + new Vector3(dx, blockSize * (i + 0.5f), dz);
+                var block = MakePrimitive(PrimitiveType.Cube, _contentRoot, pos, Vector3.one * blockSize, color);
+                block.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            }
+            // ── slut 3a ──
             // Bemærk: ingen Rigidbody. Fysik er ikke deterministisk på tværs af enheder,
             // så et tårn der "vælter" ville vælte forskelligt for de to spillere.
         }
@@ -145,7 +154,20 @@ namespace Xrv.Qr
         /// </summary>
         void BuildBlocks(string spec)
         {
-            // UDVIDELSE C – læs spec ("x,y,z,farve/x,y,z,farve/…") og byg klodserne. Se README.
+            // ── Løsning til udvidelse C ──
+            foreach (var entry in spec.Split('/'))
+            {
+                var f = entry.Split(',');
+                if (f.Length < 3) continue;
+                if (!int.TryParse(f[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ||
+                    !int.TryParse(f[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y) ||
+                    !int.TryParse(f[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int z)) continue;
+
+                var color = f.Length > 3 ? ColorFromLetter(f[3]) : Color.white;
+                var pos = contentOffset + new Vector3(x, y + 0.5f, z) * blockSize;
+                MakePrimitive(PrimitiveType.Cube, _contentRoot, pos, Vector3.one * blockSize * 0.98f, color);
+            }
+            // ── slut C ──
         }
 
         static Color ColorFromLetter(string s) => s.Trim() switch

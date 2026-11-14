@@ -146,13 +146,20 @@ namespace Xrv.Qr
         /// </summary>
         public Pose GravityAlignedPose(Transform qr)
         {
-            // TODO OPGAVE 2b – Lås til tyngdekraften: kun position + drejning om lodret akse (4 DoF).
-            //   • qr.rotation * qrLocalTop  giver kodens top-retning i world space
-            //   • Vector3.ProjectOnPlane(v, Vector3.up)  fjerner den lodrette del
-            //   • Quaternion.LookRotation(retning, Vector3.up)  bygger en rotation, hvor op altid er op
-            //   • Hænger koden på en væg, forsvinder "top" ved projektionen – brug -normalen i stedet.
-            // Midlertidig "forkert" løsning: kodens pose med hældning og det hele.
-            return new Pose(qr.position, qr.rotation);
+            // ── Løsning til opgave 2b ──
+            Vector3 normal = qr.rotation * qrLocalNormal;
+            Vector3 top = qr.rotation * qrLocalTop;
+
+            // Koden ligger fladt: kodens "top" projiceret ned i gulvplanet giver retningen.
+            Vector3 heading = Vector3.ProjectOnPlane(top, Vector3.up);
+
+            // Koden hænger på en væg: "top" peger lodret op og forsvinder ved projektionen.
+            // Så bruger vi i stedet retningen IND i væggen (modsat normalen), så +Z stadig peger væk fra brugeren.
+            if (heading.sqrMagnitude < 0.04f)
+                heading = Vector3.ProjectOnPlane(-normal, Vector3.up);
+
+            return new Pose(qr.position, Quaternion.LookRotation(heading.normalized, Vector3.up));
+            // ── slut 2b ──
         }
 
         /// <summary>Lås nulpunktet her. Bruges også af ControllerCalibration og TwoQrOrigin (udvidelser).</summary>
@@ -207,11 +214,18 @@ namespace Xrv.Qr
 
         static Pose Average(List<Pose> poses)
         {
-            // TODO OPGAVE 2c – Midl målingerne.
-            // Positioner kan midles som tal, men retninger skal midles som VEKTORER
-            // (359° og 1° giver ikke 180°!): læg p.rotation * Vector3.forward sammen, og normalisér.
-            // Midlertidig løsning: den nyeste måling.
-            return poses[poses.Count - 1];
+            // ── Løsning til opgave 2c ──
+            Vector3 pos = Vector3.zero;
+            Vector3 fwd = Vector3.zero;
+            foreach (var p in poses)
+            {
+                pos += p.position;
+                fwd += p.rotation * Vector3.forward; // midling af retninger, ikke af vinkler (359° + 1° != 180°)
+            }
+            pos /= poses.Count;
+            fwd = Vector3.ProjectOnPlane(fwd, Vector3.up).normalized;
+            return new Pose(pos, Quaternion.LookRotation(fwd, Vector3.up));
+            // ── slut 2c ──
         }
 
         static void Spread(List<Pose> poses, Pose mean, out float maxCm, out float maxDeg)

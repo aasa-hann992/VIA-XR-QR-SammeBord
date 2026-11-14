@@ -28,14 +28,28 @@ namespace Xrv.Qr
         public static bool TryDecode(string raw, string key, out string content)
         {
             content = null;
-            // TODO OPGAVE 2a – Bestem, hvilke QR-koder jeres app reagerer på.
-            // En kode ser sådan ud:  XRV1:<base64>   (se forklaringen øverst i filen)
-            //   1. Starter raw med Prefix? Ellers: return false.
-            //   2. Base64-dekod resten:  Convert.FromBase64String(...)
-            //   3. XOR hver byte med nøglens bytes:  Encoding.UTF8.GetBytes(key)
-            //   4. Lav bytes om til tekst. Starter den med Magic ("XRV|")? Så er content resten af teksten.
-            // Løsningen står på slides – og i branchen "loesning".
-            return false;
+            // ── Løsning til opgave 2a ──
+            // 1. Er det overhovedet en af vores koder?
+            if (string.IsNullOrEmpty(raw) || string.IsNullOrEmpty(key) || !raw.StartsWith(Prefix)) return false;
+
+            // 2. Base64 → bytes
+            byte[] data;
+            try { data = Convert.FromBase64String(raw.Substring(Prefix.Length)); }
+            catch (FormatException) { return false; }
+
+            // 3. XOR med nøglen (samme operation krypterer og dekrypterer)
+            var k = Encoding.UTF8.GetBytes(key);
+            for (int i = 0; i < data.Length; i++) data[i] ^= k[i % k.Length];
+
+            // 4. Bytes → tekst. Forkert nøgle giver typisk ugyldig UTF-8 eller forkert start.
+            string plain;
+            try { plain = new UTF8Encoding(false, true).GetString(data); }
+            catch (ArgumentException) { return false; }
+
+            if (!plain.StartsWith(Magic)) return false;
+            content = plain.Substring(Magic.Length);
+            return true;
+            // ── slut 2a ──
         }
 
         /// <summary>Laver QR-tekst ud fra indhold og nøgle. Samme algoritme som QR-generator-siden.</summary>
