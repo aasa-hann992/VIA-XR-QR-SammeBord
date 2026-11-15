@@ -25,8 +25,11 @@ namespace Xrv.Qr
             [Tooltip("Midl nogle målinger, lås og hold fast")] LockWhenStable,
         }
 
-        [Header("Holdets nøgle – kun QR-koder lavet med den bliver brugt")]
-        public string teamKey = SecretCode.DefaultKey;
+        [Header("Jeres id – kun QR-koder med dette id bliver brugt")]
+        [Tooltip("Begge headsets i et par skriver det samme id. Koden skal indeholde id=<samme tal>.")]
+        public string myId = "1";
+        [Tooltip("Fra = reagér på ALLE XRV-koder uanset id (fysik-demoen, hvor alle bruger ark P)")]
+        public bool requireMyId = true;
 
         [Header("QR-kodens akser – find dem i trin 1!")]
         [Tooltip("Den lokale akse på trackablen, der peger UD af papiret")]
@@ -51,7 +54,7 @@ namespace Xrv.Qr
 
         public bool IsLocked { get; private set; }
 
-        /// <summary>Det dekodede indhold af koden, fx "scene=tower;seed=42;h=10".</summary>
+        /// <summary>Det dekodede indhold af koden, fx "id=7;model=tower;seed=42;h=10".</summary>
         public string Payload { get; private set; }
 
         /// <summary>Kaldes, hver gang vi låser. Argumentet er det dekodede indhold.</summary>
@@ -66,7 +69,7 @@ namespace Xrv.Qr
         void Start()
         {
             if (hideUntilLocked) SetChildrenActive(false);
-            StatusHud.Set("2", "Nulpunkt: leder efter en QR-kode med nøglen \"" + teamKey + "\" …");
+            StatusHud.Set("2", (requireMyId ? $"Nulpunkt: leder efter en XRV-kode med id={myId} …" : "Nulpunkt: leder efter en XRV-kode …"));
 
             if (MRUK.Instance == null)
             {
@@ -87,8 +90,8 @@ namespace Xrv.Qr
         void OnTrackableAdded(MRUKTrackable t)
         {
             if (t.TrackableType != OVRAnchor.TrackableType.QRCode) return;
-            // Kun koder lavet med holdets nøgle (opgave 2a) – alle andre QR-koder i lokalet ignoreres.
-            if (!SecretCode.TryDecode(t.MarkerPayloadString, teamKey, out _)) return;
+            // Kun koder til os (opgave 2a) – alle andre QR-koder i lokalet ignoreres.
+            if (!Accepts(t.MarkerPayloadString, out _)) return;
             _candidates.Add(t);
         }
 
@@ -106,7 +109,7 @@ namespace Xrv.Qr
             {
                 _target = target;
                 _samples.Clear();
-                if (_target != null) SecretCode.TryDecode(_target.MarkerPayloadString, teamKey, out _targetContent);
+                if (_target != null) Accepts(_target.MarkerPayloadString, out _targetContent);
             }
             if (_target == null || Time.time < _nextSampleTime) return;
             _nextSampleTime = Time.time + sampleInterval;
@@ -161,6 +164,10 @@ namespace Xrv.Qr
             return new Pose(qr.position, Quaternion.LookRotation(heading.normalized, Vector3.up));
             // ── slut 2b ──
         }
+
+        /// <summary>Er koden til os? Med requireMyId = false tages alle XRV-koder (fysik-demoen).</summary>
+        public bool Accepts(string raw, out string content) =>
+            requireMyId ? QrCode.TryRead(raw, myId, out content) : QrCode.TryReadAny(raw, out content);
 
         /// <summary>Lås nulpunktet her. Bruges også af ControllerCalibration og TwoQrOrigin (udvidelser).</summary>
         public void LockAt(Pose pose, string payload)

@@ -9,8 +9,8 @@ namespace Xrv.Qr
     /// Læg scriptet på SAMME GameObject som SharedOrigin. Når origin låser, læses QR-kodens payload,
     /// og indholdet bygges deterministisk ud fra den. Begge headsets læser den samme kode -> bygger det samme.
     ///
-    /// Indhold (efter dekodning med holdets nøgle):  scene=tower;seed=42;h=10
-    ///   scene = tower | orbit | blocks
+    /// Indhold (teksten efter "XRV;"):  id=7;model=tower;seed=42;h=10
+    ///   model = tower | orbit | blocks | physics  – hvad der skal stå på koden
     ///   seed  = tal der styrer tilfældigheden (System.Random med samme seed giver samme talrække)
     /// </summary>
     [RequireComponent(typeof(SharedOrigin))]
@@ -81,7 +81,7 @@ namespace Xrv.Qr
 
             var p = ParsePayload(payload);
             int seed = GetInt(p, "seed", 0);
-            p.TryGetValue("scene", out string scene);
+            p.TryGetValue("model", out string model);
             StatusHud.Set("3", $"Indhold: {payload}");
 
             // Kontrol-kugler oven på de printede kryds: her SER man direkte hvor stor fejlen er.
@@ -91,13 +91,13 @@ namespace Xrv.Qr
                 MakePrimitive(PrimitiveType.Cylinder, dot.transform.parent, c + Vector3.up * 0.02f, new Vector3(0.002f, 0.015f, 0.002f), Color.magenta);
             }
 
-            switch (scene)
+            switch (model)
             {
                 case "tower": BuildTower(seed, GetInt(p, "h", 10)); break;
                 case "orbit": BuildOrbit(seed); break;
                 case "blocks": BuildBlocks(p.TryGetValue("b", out var b) ? b : ""); break;
                 case "physics": break; // fysik-demoen bygger selv sit tårn (PhysicsTowerDemo)
-                default: Debug.LogWarning($"[PayloadContent] Ukendt scene '{scene}' i '{payload}'"); break;
+                default: Debug.LogWarning($"[PayloadContent] Ukendt model '{model}' i '{payload}'"); break;
             }
         }
 
@@ -150,7 +150,7 @@ namespace Xrv.Qr
         /// <summary>
         /// UDVIDELSE C: et level der står direkte i koden.  b=x,y,z,farve/x,y,z,farve/...
         /// x, y, z er heltal i klods-enheder, farve er et bogstav: r g b y v w.
-        /// Eksempel på indhold: scene=blocks;b=0,0,0,r/1,0,0,g/0,1,0,b
+        /// Eksempel på indhold: id=1;model=blocks;b=0,0,0,r/1,0,0,g/0,1,0,b
         /// </summary>
         void BuildBlocks(string spec)
         {

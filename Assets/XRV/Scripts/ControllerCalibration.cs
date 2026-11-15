@@ -22,7 +22,7 @@ namespace Xrv.Qr
         public Vector3 crossRight = new Vector3(0.07f, 0f, -0.085f);
 
         [Tooltip("Uden QR-læsning må begge spillere aftale indholdet - skriv det samme her (det dekodede indhold, uden XRV1:)")]
-        public string manualPayload = "scene=tower;seed=1;h=8";
+        public string manualPayload = "id=1;model=tower;seed=1;h=8";
 
         SharedOrigin _origin;
         Transform _hand;

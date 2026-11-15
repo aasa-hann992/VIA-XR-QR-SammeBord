@@ -10,8 +10,8 @@ namespace Xrv.Qr
     /// Med to koder et stykke fra hinanden bruger vi kun deres POSITIONER: linjen fra L til R giver retningen.
     /// Jo længere imellem dem, jo mindre vinkelfejl (samme princip som lange "baseline" i landmåling).
     ///
-    /// Læg scriptet på samme GameObject som SharedOrigin. Koderne laves med holdets nøgle og indeholder
-    /// "id=L;scene=tower;seed=9;h=12" og "id=R" (se ark L og R eller QR-generator-siden).
+    /// Læg scriptet på samme GameObject som SharedOrigin. Begge koder har jeres id og et ekstra felt side=L / side=R:
+    /// "XRV;id=1;model=tower;seed=9;h=12;side=L" og "XRV;id=1;side=R" (se ark L og R eller QR-generator-siden).
     /// Rum-koordinater: origin = L, +X = mod R, +Y = op, +Z = X krydset med op.
     /// </summary>
     [RequireComponent(typeof(SharedOrigin))]
@@ -48,10 +48,10 @@ namespace Xrv.Qr
         void OnAdded(MRUKTrackable t)
         {
             if (t.TrackableType != OVRAnchor.TrackableType.QRCode) return;
-            if (!SecretCode.TryDecode(t.MarkerPayloadString, _origin.teamKey, out var payload)) return;
+            if (!_origin.Accepts(t.MarkerPayloadString, out var payload)) return;
 
             var p = PayloadContent.ParsePayload(payload);
-            if (!p.TryGetValue("id", out var id) || !_samples.ContainsKey(id)) return;
+            if (!p.TryGetValue("side", out var id) || !_samples.ContainsKey(id)) return;
             _codes[id] = t;
             if (id == "L") _payloadL = payload;
         }

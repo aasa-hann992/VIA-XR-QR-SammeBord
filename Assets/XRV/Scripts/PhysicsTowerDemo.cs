@@ -43,6 +43,7 @@ namespace Xrv.Qr
         void Awake()
         {
             _origin = GetComponent<SharedOrigin>();
+            _origin.requireMyId = false; // alle grupper bruger ark P, så id er ligegyldigt her (og opgave 2a er ikke nødvendig)
             _origin.Locked += OnLocked;
             if (baseMaterial != null) PayloadContent.SharedMaterial = baseMaterial;
         }
@@ -84,7 +85,7 @@ namespace Xrv.Qr
             {
                 _reported = true;
                 var top = _bodies[_bodies.Count - 1].transform.position;
-                var local = _origin.transform.InverseTransformPoint(top);
+                var local = _root.InverseTransformPoint(top);
                 StatusHud.Set("4", $"Øverste klods landede:  x = {local.x * 100f:0.0} cm   z = {local.z * 100f:0.0} cm\n" +
                                    "Sammenlign med din makker! (nyt forsøg om lidt)");
             }
@@ -99,8 +100,12 @@ namespace Xrv.Qr
 
             // Tårnet er IKKE barn af SharedOrigin: et spatial anchor flytter sin transform en anelse hver frame,
             // og det må ikke skubbe til dynamiske rigidbodies. Vi kopierer posen én gang.
+            // Vi låser selv til tyngdekraften her, så demoen virker, også før opgave 2b er løst
+            // (og selv om QR-koden står på skrå, fx på en laptop-skærm).
             _root = new GameObject("PhysicsTower").transform;
-            _root.SetPositionAndRotation(_origin.transform.position, _origin.transform.rotation);
+            var fwd = Vector3.ProjectOnPlane(_origin.transform.forward, Vector3.up);
+            if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.ProjectOnPlane(_origin.transform.up, Vector3.up);
+            _root.SetPositionAndRotation(_origin.transform.position, Quaternion.LookRotation(fwd.normalized, Vector3.up));
 
             // Et usynligt bord: en flad box-collider i højde med QR-koden.
             var floor = new GameObject("Bordflade").AddComponent<BoxCollider>();

@@ -8,8 +8,8 @@ Undervisningsmateriale til XR-teknologier, VIA University College · Andreas Ste
 |---|---|
 | **Branch `main`** | Opgaven: projektet virker, men der er huller (`TODO OPGAVE …`), som I udfylder |
 | **Branch `loesning`** | Løsningen: alle huller udfyldt, plus udvidelse A (`TwoQrOrigin`) og C (`blocks`) |
-| **QR-generator** | <https://aasa-hann992.github.io/VIA-XR-QR-SammeBord/>: lav jeres egne, nøglekodede QR-koder |
-| **Printbare ark** | [`Print/QR_ark.pdf`](Print/QR_ark.pdf): ark A–F (øvelsen), P (fysik-demo), L + R (udvidelse A) |
+| **QR-generator** | <https://aasa-hann992.github.io/VIA-XR-QR-SammeBord/>: lav QR-koder med jeres eget id |
+| **Printbare ark** | [`Print/QR_ark.pdf`](Print/QR_ark.pdf): ark 1–8 (én pr. gruppe), P (fysik-demo), L + R (udvidelse A) |
 
 ---
 
@@ -26,7 +26,7 @@ udveksler en eneste byte.
 Når I er færdige, kan I:
 
 - læse en QR-kodes **pose** og **payload** med Meta MR Utility Kit (MRUK)
-- filtrere QR-koder, så **kun jeres app** reagerer på jeres egne koder
+- filtrere QR-koder, så **kun jeres headsets** reagerer på koder med jeres id
 - lave et fælles **rum-koordinatsystem**: lås til tyngdekraften, og midl målingerne
 - holde indholdet fast med en **spatial anchor**
 - vise det samme på begge headsets ud fra et **seed** og **fælles tid**, og forklare, hvorfor **fysik** ikke kan deles på den måde
@@ -36,7 +36,7 @@ Når I er færdige, kan I:
 
 - 2 × **Meta Quest 3 eller 3S** (Quest Pro kan ikke læse QR-koder med MRUK, se *Quest Pro-variant*)
 - **Unity 6000.4.3f1** med Android Build Support (OpenJDK, SDK & NDK)
-- Et printet ark fra `Print/QR_ark.pdf`. Print i **100 %**, og tjek at målestokken er 100 mm.
+- Et printet ark fra `Print/QR_ark.pdf` (print i **100 %**, tjek at målestokken er 100 mm), eller koden vist på en skærm, fx en laptop.
 - En lineal
 
 > **Gør det hjemmefra:** klon repoet, og åbn det én gang i Unity (platform: **Android**).
@@ -52,7 +52,7 @@ git clone https://github.com/aasa-hann992/VIA-XR-QR-SammeBord.git
 Assets/Scenes/1_QR_SammeBord.unity            ← øvelsen
 Assets/Scenes/2_Fysik_IkkeDeterministisk.unity ← demoen (X-knappen skifter scene)
 Assets/XRV/Scripts/
-  SecretCode.cs        opgave 2a – hvilke QR-koder reagerer appen på?
+  QrCode.cs            opgave 2a – reagér kun på koder med jeres id
   SharedOrigin.cs      opgave 2b + 2c – tyngdekraft-lås og midling
   PayloadContent.cs    opgave 3a – byg indhold ud fra et seed
   QrDebugVisualizer.cs viser akser, payload og opdateringsrate på hver QR-kode
@@ -69,11 +69,29 @@ Print/                 printbare ark + Python-script til at lave flere
 
 **Knapper i headsettet:** **B** = lås nulpunktet igen · **X** = næste scene · **venstre stick-klik** = skjul tekst
 
+## Hvad står der i QR-koden?
+
+Koderne er almindelig, læsbar tekst:
+
+```
+XRV;id=7;model=tower;seed=42;h=10
+```
+
+| Felt | Betyder |
+|---|---|
+| `XRV` | Det er en kode til øvelsen. Alle andre QR-koder i lokalet ignoreres. |
+| `id` | **Jeres id.** Kun headsets, hvor `myId` på SharedOrigin er samme tal, reagerer på koden. Begge headsets i parret bruger samme id. |
+| `model` | Hvad der skal stå på koden: `tower` (tårn), `orbit` (planeter), `blocks` (jeres eget level) eller `physics` (fysik-demoen). |
+| `seed` | Starttallet for tilfældigheden. Samme seed giver præcis det samme »tilfældige« tårn på begge headsets. |
+| `h` | Tårnets højde i klodser. |
+
+Lav jeres egne koder på QR-generatoren, eller med en hvilken som helst QR-generator: det er bare tekst.
+
 ---
 
 ## Trin 1: Hvad ser headsettet? (ca. 20 min)
 
-Byg og kør scenen `1_QR_SammeBord`, og læg ark **A** fladt på bordet. Over koden kommer et akse-kryds
+Byg og kør scenen `1_QR_SammeBord`, og læg jeres ark (fx ark **1**) fladt på bordet. Over koden kommer et akse-kryds
 (rød = X, grøn = Y, blå = Z) og en gul tekst. Undersøg og skriv ned:
 
 1. Hvilken akse peger **ud af papiret**? Hvilken peger mod **"KODENS TOP"**?
@@ -97,9 +115,10 @@ origin = QR-kodens midte
 +X     = mod højre
 ```
 
-**2a – Hvilke QR-koder reagerer appen på?** (`SecretCode.cs`)
-QR-koderne er kodet med holdets **nøgle**: `XRV1:<base64>`. Implementér `TryDecode`. Før det virker,
-ignorerer appen alle koder. Arkene bruger nøglen `VIA-XR`.
+**2a – Reagér kun på jeres id** (`QrCode.TryRead`)
+Lige nu reagerer appen på **alle** XRV-koder, også de andre gruppers. Prøv det først! Implementér så
+`TryRead`, så den kun returnerer `true`, når feltet `id` er det samme som `myId`.
+Skriv jeres id i `myId` på SharedOrigin i inspectoren.
 
 **2b – Lås til tyngdekraften** (`SharedOrigin.GravityAlignedPose`)
 Brug kun position + drejning om lodret akse (4 DoF). Skriv jeres svar fra trin 1 ind i `qrLocalNormal` og
@@ -114,14 +133,15 @@ Prøv `useSpatialAnchor` til og fra, gå en tur rundt i 2 minutter, og mål igen
 
 ## Trin 3: Samme oplevelse fra samme kode (ca. 25 min)
 
-**3a – Byg et tårn ud fra et seed** (`PayloadContent.BuildTower`)
-Indholdet i koden er fx `scene=tower;seed=42;h=10`. Byg et skævt, farverigt tårn med
-`new System.Random(seed)`. Står I med samme ark, skal I se **præcis** samme tårn.
+**3a – Det samme tårn på begge headsets** (`PayloadContent.BuildTower`)
+Lige nu bygges tårnet med `UnityEngine.Random`: hvert headset får sit **eget** tilfældige tårn. Se det med to
+headsets. Skift til `new System.Random(seed)`, og brug seed fra koden. Nu skal I se **præcis** samme tårn.
 
-- Hvorfor ikke `UnityEngine.Random`?
+- Hvorfor giver samme seed det samme tårn?
+- Hvorfor ikke bare `UnityEngine.Random.InitState(seed)`?
 - **Klæd det ud:** byt klodserne ud med jeres egne prefabs, fx fra stable-spillet.
 
-**Fælles tid:** ark C og E viser planeter, der styres af uret (`SharedClock`), ikke af `Time.time`.
+**Fælles tid:** lav en kode med `model=orbit`. Planeterne styres af uret (`SharedClock`), ikke af `Time.time`.
 Bevæger de sig synkront på begge headsets?
 
 ## Trin 4: Mål det (ca. 20 min)
@@ -136,27 +156,39 @@ Bevæger de sig synkront på begge headsets?
 
 ## Demo: fysik er ikke deterministisk
 
-Tryk **X** for at skifte til scenen `2_Fysik_IkkeDeterministisk`, og brug ark **P**. Begge headsets bygger det
+Tryk **X** for at skifte til scenen `2_Fysik_IkkeDeterministisk`, og brug ark **P** (her reagerer alle headsets, uanset id). Begge headsets bygger det
 **samme** skæve tårn på det **samme** sted og slipper det på det **samme** tidspunkt (uret). Alligevel vælter
 det forskelligt: HUD'en viser, hvor den øverste klods landede. Sammenlign tallene.
 Alt, der kan regnes ud, kan deles uden netværk. Fysik kan ikke regnes ud på den måde.
 
 ## Lav jeres egne QR-koder
 
-1. Vælg en **nøgle** til jeres hold, og skriv den i `teamKey` på SharedOrigin.
+1. Vælg et **id** til jeres par (fx jeres gruppenummer), og skriv det i `myId` på SharedOrigin på **begge** headsets.
 2. Åbn **QR-generatoren**: <https://aasa-hann992.github.io/VIA-XR-QR-SammeBord/>
-3. Skriv samme nøgle, vælg indhold, og print arket (100 %), eller vis koden på en skærm.
+3. Skriv samme id, vælg model og seed, og vis koden på en skærm eller print arket (100 %).
 
-Nu reagerer **kun jeres app** på jeres koder, og alle andre QR-koder i lokalet bliver ignoreret.
-Det er et filter, ikke rigtig kryptering: XOR med en kort nøgle kan knækkes på få minutter.
+Når opgave 2a er løst, reagerer **kun jeres headsets** på jeres koder.
+
+## Hjælp til hullerne
+
+| Hul | Slå op her |
+|---|---|
+| 2a | [Dictionary.TryGetValue](https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2.trygetvalue) · [String.StartsWith](https://learn.microsoft.com/dotnet/api/system.string.startswith) · `PayloadContent.ParsePayload` i projektet |
+| 2b | [Vector3.ProjectOnPlane](https://docs.unity3d.com/ScriptReference/Vector3.ProjectOnPlane.html) · [Quaternion.LookRotation](https://docs.unity3d.com/ScriptReference/Quaternion.LookRotation.html) |
+| 2c | [Vector3.ProjectOnPlane](https://docs.unity3d.com/ScriptReference/Vector3.ProjectOnPlane.html) · [Vector3.normalized](https://docs.unity3d.com/ScriptReference/Vector3-normalized.html) · tip: `rotation * Vector3.forward` |
+| 3a | [System.Random](https://learn.microsoft.com/dotnet/api/system.random) · [UnityEngine.Random](https://docs.unity3d.com/ScriptReference/Random.html) |
+| QR i MRUK | [QR Code Detection](https://developers.meta.com/horizon/documentation/unity/unity-mr-utility-kit-qrcode-detection) · [Trackables](https://developers.meta.com/horizon/documentation/unity/unity-mr-utility-kit-trackables) |
+| Anchors | [Spatial Anchors overview](https://developers.meta.com/horizon/documentation/unity/unity-spatial-anchors-overview/) |
+
+Sidder I fast, står løsningen i branchen `loesning` og på slides.
 
 ## Udvidelser
 
 | | Udvidelse | Idé |
 |---|---|---|
-| **A** | To koder | Læg ark L og R ca. 1 m fra hinanden. Linjen mellem dem giver en meget bedre retning (lang baseline). Løsning: `TwoQrOrigin.cs` på `loesning`. |
+| **A** | To koder | Læg ark L og R ca. 1 m fra hinanden (de har `id=1` og `side=L` / `side=R`; lav nye på generatoren med jeres id). Linjen mellem dem giver en meget bedre retning (lang baseline). Løsning: `TwoQrOrigin.cs` på `loesning`. |
 | **B** | Controller | Slå `ControllerCalibration` til, og rør de to kryds med controllerens spids (A). Hvad er mest præcist? |
-| **C** | Level i koden | `scene=blocks;b=0,0,0,r/1,0,0,g/0,1,0,b`: design et level, lav koden på generator-siden, og giv det videre. |
+| **C** | Level i koden | `XRV;id=7;model=blocks;b=0,0,0,r/1,0,0,g/0,1,0,b`: design et level, lav koden på generator-siden, og giv det videre. |
 | **D** | Spil uden netværk | Hvert 5. sekund lyser den samme kugle på begge headsets: `new System.Random(seed + (int)(SharedClock.Seconds / 5))`. Hvem rører den først? |
 | **E** | Auto re-sync | Ser I koden igen, og er I drevet, så glid blødt over, helst mens hovedet bevæger sig. |
 
@@ -171,10 +203,11 @@ skal bruge samme metode og skrive det samme indhold i `manualPayload`.
 | Problem | Mulig årsag |
 |---|---|
 | »QR-tracking: IKKE understøttet« | Quest Pro, for gammelt Horizon OS, eller ingen tilladelse til rumdata. Indstillinger › Privatliv › Rumdata, eller geninstallér og sig ja. |
-| Koden ses, men »Ikke dekodet med nøglen« | Opgave 2a mangler, eller nøglen er forskellig fra den, koden er lavet med. |
+| Koden ses, men »Ikke til os« | Koden har et andet id end `myId` på SharedOrigin. |
+| Vi reagerer også på de andre gruppers koder | Opgave 2a mangler. |
 | Indholdet hælder som papiret | Opgave 2b mangler, eller `qrLocalNormal` / `qrLocalTop` er forkerte. |
 | Det låser aldrig | Målingerne er uenige: stå stille, gå tættere på, og sørg for godt lys uden genskin. |
-| To forskellige tårne | Forskellige ark? `UnityEngine.Random` i stedet for `System.Random`? |
+| To forskellige tårne | Opgave 3a mangler (`UnityEngine.Random`), eller I kigger på forskellige koder. |
 
 ---
 
