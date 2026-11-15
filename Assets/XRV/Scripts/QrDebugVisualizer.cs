@@ -127,10 +127,11 @@ namespace Xrv.Qr
                     : "ukendt";
 
                 var origin = FindAnyObjectByType<SharedOrigin>();
-                string key = origin != null ? origin.teamKey : SecretCode.DefaultKey;
-                string decoded = SecretCode.TryDecode(trackable.MarkerPayloadString, key, out var content)
-                    ? "Dekodet: " + content
-                    : "Ikke dekodet med nøglen \"" + key + "\"";
+                string raw = trackable.MarkerPayloadString;
+                string decoded;
+                if (!QrCode.TryReadAny(raw, out _)) decoded = "Ikke en XRV-kode – ignoreres";
+                else if (origin == null || origin.Accepts(raw, out _)) decoded = "Til os";
+                else decoded = $"Ikke til os (vores id er {origin.myId})";
 
                 v.label.text =
                     $"{trackable.MarkerPayloadString}\n{decoded}\n" +

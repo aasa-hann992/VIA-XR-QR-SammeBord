@@ -36,6 +36,7 @@ namespace Xrv.EditorTools
             XrvSceneUtil.Empty("QR Debug", typeof(QrDebugVisualizer));
             origin = XrvSceneUtil.Empty("SharedOrigin", typeof(SharedOrigin), typeof(PhysicsTowerDemo));
             origin.GetComponent<SharedOrigin>().hideUntilLocked = false;
+            origin.GetComponent<SharedOrigin>().requireMyId = false; // alle grupper bruger ark P – virker uden opgave 2a
             origin.GetComponent<PhysicsTowerDemo>().baseMaterial = mat;
             XrvSceneUtil.Save(b, PhysicsScene);
 

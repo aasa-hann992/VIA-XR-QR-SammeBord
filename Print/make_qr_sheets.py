@@ -1,12 +1,8 @@
 # Laver de printbare QR-ark. Kræver: pip install reportlab   Kør: python make_qr_sheets.py
-# Tilføj jeres egne ark i listen "sheets" (navn, indhold, beskrivelse). Indholdet XOR-kodes med KEY,
-# præcis som SecretCode.Encode i Unity og QR-generator-siden (docs/index.html).
-import base64
-KEY = "VIA-XR"
-def encode(content, key=KEY):
-    b = bytearray(("XRV|" + content).encode("utf-8")); k = key.encode("utf-8")
-    for i in range(len(b)): b[i] ^= k[i % len(k)]
-    return "XRV1:" + base64.b64encode(bytes(b)).decode()
+# Teksten i koden er almindelig, læsbar tekst:  XRV;id=<jeres id>;model=<tower|orbit|blocks|physics>;seed=<tal>;h=<højde>
+# Samme format som QrCode.cs i Unity og QR-generator-siden (docs/index.html). Tilføj jeres egne ark i listen "sheets".
+def encode(content):
+    return "XRV;" + content
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
@@ -19,16 +15,10 @@ QR = 120*mm
 CX, CY = W/2, 170*mm           # QR-kodens midte
 CROSSES = [(-70*mm, -85*mm), (70*mm, -85*mm)]
 
-sheets = [
- ("A","scene=tower;seed=1;h=8","Tårn (8 klodser)"),
- ("B","scene=tower;seed=2;h=12","Tårn (12 klodser)"),
- ("C","scene=orbit;seed=3","Planeter (styret af uret)"),
- ("D","scene=tower;seed=4;h=10","Tårn (10 klodser)"),
- ("E","scene=orbit;seed=5","Planeter (styret af uret)"),
- ("F","scene=tower;seed=6;h=15","Tårn (15 klodser)"),
- ("P","scene=physics;seed=7;h=12","Fysik-demoen: samme tårn, forskelligt fald"),
- ("L","id=L;scene=tower;seed=9;h=12","Udvidelse A - VENSTRE kode"),
- ("R","id=R","Udvidelse A - HØJRE kode"),
+sheets = [(str(n), f"id={n};model=tower;seed=42;h=10", f"Gruppe {n}: tårn (id={n}, seed=42)") for n in range(1, 9)] + [
+ ("P","model=physics;seed=7;h=12","Fysik-demoen: alle grupper - samme tårn, forskelligt fald"),
+ ("L","id=1;model=tower;seed=9;h=12;side=L","Udvidelse A - VENSTRE kode (id=1)"),
+ ("R","id=1;side=R","Udvidelse A - HØJRE kode (id=1)"),
 ]
 
 def cross(c,x,y,s=8*mm):
@@ -62,8 +52,7 @@ for name,content,desc in sheets:
         c.drawCentredString(CX+dx, CY+dy-16*mm, f"x = {dx/mm:+.0f} mm, z = {dy/mm:+.0f} mm")
     c.setFont("Helvetica",8); c.drawCentredString(CX, CY+CROSSES[0][1]+2*mm, "-- de lilla kugler skal sidde præcis på krydsene --")
     # payload + målestok
-    c.setFont("Courier",9); c.drawCentredString(CX, 44*mm, f"indhold:  {content}")
-    c.setFont("Courier",7); c.drawCentredString(CX, 39*mm, f"QR-tekst (nøgle {KEY}):  {payload}")
+    c.setFont("Courier",11); c.drawCentredString(CX, 42*mm, f"QR-tekst:  {payload}")
     c.setLineWidth(1); y=25*mm; x0=CX-50*mm
     c.line(x0,y,x0+100*mm,y)
     for k in range(11):
