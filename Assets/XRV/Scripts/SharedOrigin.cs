@@ -149,12 +149,15 @@ namespace Xrv.Qr
         /// </summary>
         public Pose GravityAlignedPose(Transform qr)
         {
-            // TODO OPGAVE 2b – Lås til tyngdekraften: kun position + drejning om lodret akse (4 DoF).
-            //   • qr.rotation * qrLocalTop  giver kodens top-retning i world space
-            //   • Vector3.ProjectOnPlane(v, Vector3.up)  fjerner den lodrette del
-            //   • Quaternion.LookRotation(retning, Vector3.up)  bygger en rotation, hvor op altid er op
-            //   • Hænger koden på en væg, forsvinder "top" ved projektionen – brug -normalen i stedet.
-            // Midlertidig "forkert" løsning: kodens pose med hældning og det hele.
+            // Kodens akser i verden (jeres svar fra trin 1):
+            Vector3 normal = qr.rotation * qrLocalNormal; // ud af koden, mod jer
+            Vector3 top = qr.rotation * qrLocalTop;       // mod kodens top
+
+            // TODO OPGAVE 2b – Lås til tyngdekraften: kun position + drejning om lodret akse.
+            //   1. Find "fremad" (væk fra jer) som en vektor. Tip: top - normal virker, både når koden ligger og står.
+            //   2. Vector3.ProjectOnPlane(fremad, Vector3.up) fjerner den lodrette del.
+            //   3. Quaternion.LookRotation(fremad, Vector3.up) bygger en rotation, hvor op altid er lodret op.
+            // Midlertidig "forkert" løsning: kodens rotation med hældning og det hele.
             return new Pose(qr.position, qr.rotation);
         }
 
