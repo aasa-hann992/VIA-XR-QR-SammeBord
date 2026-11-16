@@ -149,19 +149,15 @@ namespace Xrv.Qr
         /// </summary>
         public Pose GravityAlignedPose(Transform qr)
         {
+            // Kodens akser i verden (jeres svar fra trin 1):
+            Vector3 normal = qr.rotation * qrLocalNormal; // ud af koden, mod jer
+            Vector3 top = qr.rotation * qrLocalTop;       // mod kodens top
+
             // ── Løsning til opgave 2b ──
-            Vector3 normal = qr.rotation * qrLocalNormal;
-            Vector3 top = qr.rotation * qrLocalTop;
-
-            // Koden ligger fladt: kodens "top" projiceret ned i gulvplanet giver retningen.
-            Vector3 heading = Vector3.ProjectOnPlane(top, Vector3.up);
-
-            // Koden hænger på en væg: "top" peger lodret op og forsvinder ved projektionen.
-            // Så bruger vi i stedet retningen IND i væggen (modsat normalen), så +Z stadig peger væk fra brugeren.
-            if (heading.sqrMagnitude < 0.04f)
-                heading = Vector3.ProjectOnPlane(-normal, Vector3.up);
-
-            return new Pose(qr.position, Quaternion.LookRotation(heading.normalized, Vector3.up));
+            // "Fremad" = væk fra jer. Ligger koden fladt, er det kodens top. Står den op (skærm, væg), er det ind i koden.
+            // top - normal dækker begge tilfælde. ProjectOnPlane fjerner den lodrette del: tilbage er retningen i gulvplanet.
+            Vector3 fremad = Vector3.ProjectOnPlane(top - normal, Vector3.up);
+            return new Pose(qr.position, Quaternion.LookRotation(fremad, Vector3.up));
             // ── slut 2b ──
         }
 
