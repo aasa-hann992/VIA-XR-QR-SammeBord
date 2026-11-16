@@ -15,10 +15,10 @@ namespace Xrv.Qr
     public class QrDebugVisualizer : MonoBehaviour
     {
         [Tooltip("Længde af akse-pilene i meter")]
-        public float axisLength = 0.08f;
+        public float axisLength = 0.10f;
 
         [Tooltip("Tykkelse af akse-pilene i meter")]
-        public float axisThickness = 0.004f;
+        public float axisThickness = 0.006f;
 
         class Visual
         {
@@ -32,6 +32,7 @@ namespace Xrv.Qr
         }
 
         readonly Dictionary<MRUKTrackable, Visual> _visuals = new();
+        readonly List<Transform> _letters = new();
         Font _font;
 
         void Start()
@@ -100,6 +101,9 @@ namespace Xrv.Qr
                 StatusHud.Set("0", (MRUK.Instance.QRCodeTrackingSupported ? "QR-tracking: understøttet" : "QR-tracking: IKKE understøttet (Quest 3/3S? rumdata-tilladelse?)")
                                    + $"   ·   QR-koder set: {_visuals.Count}");
             var cam = Camera.main;
+            if (cam != null)
+                foreach (var l in _letters)
+                    if (l != null) l.rotation = Quaternion.LookRotation(l.position - cam.transform.position, Vector3.up);
 
             foreach (var (trackable, v) in _visuals)
             {
@@ -147,15 +151,27 @@ namespace Xrv.Qr
             }
         }
 
-        static void MakeAxis(Transform parent, Vector3 scale, Vector3 dir, Color color)
+        void MakeAxis(Transform parent, Vector3 scale, Vector3 dir, Color color)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            Destroy(go.GetComponent<Collider>());
+            // Samme materiale som indholdet (PayloadContent.SharedMaterial): et materiale, der ligger som asset,
+            // kommer med i APK'en. Standard-materialet fra CreatePrimitive kan blive strippet, så akserne er usynlige.
+            float len = Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
+            var go = PayloadContent.MakePrimitive(PrimitiveType.Cube, parent, dir * (len * 0.5f), scale, color);
             go.name = $"Axis {dir}";
-            go.transform.SetParent(parent, false);
-            go.transform.localScale = scale;
-            go.transform.localPosition = dir * (Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z)) * 0.5f);
-            go.GetComponent<Renderer>().material.color = color;
+
+            // Bogstav for enden af aksen: X, Y eller Z
+            var letter = new GameObject("Bogstav");
+            letter.transform.SetParent(parent, false);
+            letter.transform.localPosition = dir * (len + 0.012f);
+            var tm = letter.AddComponent<TextMesh>();
+            tm.font = _font;
+            letter.GetComponent<MeshRenderer>().sharedMaterial = _font.material;
+            tm.text = dir == Vector3.right ? "X" : dir == Vector3.up ? "Y" : "Z";
+            tm.fontSize = 60;
+            tm.characterSize = 0.003f;
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.color = color;
+            _letters.Add(letter.transform);
         }
     }
 }
