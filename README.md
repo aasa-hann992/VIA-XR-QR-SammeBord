@@ -115,16 +115,16 @@ origin = QR-kodens midte
 +X     = mod højre
 ```
 
-**2a – Reagér kun på jeres id** (`QrCode.TryRead`)
+**2a – Reagér kun på jeres id** (`QrCode.cs - TryRead`)
 Lige nu reagerer appen på **alle** XRV-koder, også de andre gruppers. Prøv det først! Implementér så
 `TryRead`, så den kun returnerer `true`, når feltet `id` er det samme som `myId`.
 Skriv jeres id i `myId` på SharedOrigin i inspectoren.
 
-**2b – Lås til tyngdekraften** (`SharedOrigin.GravityAlignedPose`)
+**2b – Lås til tyngdekraften** (`SharedOrigin.cs - GravityAlignedPose`)
 Brug kun position + drejning om lodret akse (4 DoF). Skriv jeres svar fra trin 1 ind i `qrLocalNormal` og
 `qrLocalTop` på SharedOrigin i inspectoren. Værktøjer: `Vector3.ProjectOnPlane`, `Quaternion.LookRotation`.
 
-**2c – Midl målingerne** (`SharedOrigin.Average`)
+**2c – Midl målingerne** (`SharedOrigin.cs - Average`)
 Sæt først `mode = Follow`, og se støjen. Implementér så `Average`, og sæt `mode = LockWhenStable`.
 Man kan ikke midle vinkler som tal: 359° og 1° giver ikke 180°.
 
@@ -133,7 +133,7 @@ Prøv `useSpatialAnchor` til og fra, gå en tur rundt i 2 minutter, og mål igen
 
 ## Trin 3: Samme oplevelse fra samme kode (ca. 25 min)
 
-**3a – Det samme tårn på begge headsets** (`PayloadContent.BuildTower`)
+**3a – Det samme tårn på begge headsets** (`PayloadContent.cs - BuildTower`)
 Lige nu bygges tårnet med `UnityEngine.Random`: hvert headset får sit **eget** tilfældige tårn. Se det med to
 headsets. Skift til `new System.Random(seed)`, og brug seed fra koden. Nu skal I se **præcis** samme tårn.
 
